@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UQUART - Communicator Login</title>
+    <style>
+        .form-container2{
+            
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            color:white;
+            position: absolute;
+        }
+
+        .form-container {
+            max-width: 300px;
+            padding: 10px;
+            backdrop-filter: blur(10px);
+            border-color: #2bff00;
+            box-shadow: 0 0 10px rgb(72, 255, 0);
+            border-width: 1px;
+            border-style: solid;
+            border-radius: 15px;
+        }
+
+        .form-container input[type=text],
+        .form-container input[type=password] {
+            width: 270px;
+            padding: 15px;
+            margin: 5px 0 22px 0;
+            border: none;
+            background-color: #555;
+            color: white;
+            border-radius: 10px;
+        }
+
+        .form-container input[type=text]:focus,
+        .form-container input[type=password]:focus {
+            background-color: #555;
+            color: white;
+            outline: none;
+        }
+
+        .form-container .btn {
+            background-color: #04AA6D;
+            color: white;
+            padding: 16px 20px;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 10px;
+            opacity: 0.8;
+            border-style: solid;
+            border-width: 1px;
+            border-color: #2bff00;
+            border-radius: 100px;
+        }
+
+        .form-container .cancel {
+            background-color: rgb(0, 0, 0);
+        }
+
+        .form-container .btn:hover,
+        .open-button:hover {
+            opacity: 1;
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            font-family: "Handjet", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 568;
+    font-style: normal;
+    font-variation-settings:
+        "ELGR" 1,
+        "ELSH" 2;
+        }
+      
+        shader-art {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+      
+        shader-art canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #titleFORM{
+            text-align: center;
+            overflow: hidden;
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Handjet&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Montserrat:ital,wght@0,250;1,250&display=swap"
+        rel="stylesheet">
+</head>
+<body>
+    <div class="form-container2">
+        <form class="form-container" onsubmit="login();">
+            <h3 id="titleFORM">UQUART Communicator</h3>
+            <label>Your Id</label>
+            <input id="userIdInputLOG" type="text" placeholder="Your ID" maxlength="8" required class="inputLOGIN">
+            <label>Your Private Key</label>
+            <input id="privateKeyInputLOG" type="password" placeholder="Your Private Key" maxlength="16" required class="inputLOGIN">
+            <br>
+            <button type="button" class="btn cancel" onsubmit="login();" onclick="login();">Login & save</button>
+        </form>
+    </div>
+
+    <script type="module">
+        import { ShaderArt } from 'https://cdn.skypack.dev/shader-art';
+        ShaderArt.register();
+    </script>
+    
+    <script>
+        function login() {
+            const userId = document.getElementById('userIdInputLOG').value;
+            const privateKey = document.getElementById('privateKeyInputLOG').value;
+
+            if (userId && privateKey) {
+                const url = new URL('http://localhost:8080/coms.html');
+                url.searchParams.append('userId', userId);
+                url.searchParams.append('privateKey', privateKey);
+                
+                window.location.href = url.toString(); 
+            } else {
+                alert('Please enter both User ID and Private Key.');
+            }
+        }
+    </script>
+    
+    <shader-art autoplay dpr="1" role="img" tabindex="0" aria-label="A noise animation in red">
+        <script type="buffer" name="position" data-size="2">
+          [-1, 1, -1,-1, 1,1, 1, 1, -1,-1, 1,-1]
+        </script>
+        <script type="buffer" name="uv" data-size="2">
+          [ 0, 0,  0, 1, 1,0, 1, 0,  0, 1, 1, 1]
+        </script>
+        <script type="vert">
+          #version 300 es
+          
+          precision highp float;
+          in vec4 position;
+          in vec2 uv;
+          out vec2 vUv;
+          out vec4 vPosition;
+          void main() {
+            vUv = uv;
+            vPosition = position;
+            gl_Position = position;
+          }
+        </script>
+        <script type="frag">
+          #version 300 es
+          
+          precision highp float;
+          in vec2 vUv;
+          in vec4 vPosition;
+          out vec4 fragColor;
+          uniform vec2 resolution;
+          uniform float time;
+          uniform sampler2D charset;
+          uniform sampler2D message;
+          
+          #define AA 1e-3
+          #define PI 3.141592654
+          #define DEG PI / 180.
+      
+          vec2 rotate(vec2 p, float a) {
+            return vec2(p.x * cos(a) - p.y * sin(a),
+                    p.x * sin(a) + p.y * cos(a));
+          }
+            
+          float nooise(vec2 p) {
+            float n = .5 + .5 * (
+              sin(p.x * .5 + cos(p.y * 4. + .2 * cos(p.x * 2. + time * .5) + time * .3) + time * .4) * 
+              cos(p.y * .7 + sin(p.x * 3. + .3 * cos(p.y * 2. + time * .6) + time * .4) + time * .7)
+            );
+            return n;
+          }
+          
+          
+          vec3 background() {
+            vec2 p0 = vPosition.xy;
+            float aspectRatio = resolution.x / resolution.y;
+            p0.x *= aspectRatio;
+            vec2 p = rotate(p0.xy * .8, time * .05);
+            
+            float n = (nooise(p) + nooise(p * 2.) + nooise(p * 5.)) / 3.;
+            
+            n = n * sin(n * n * 23. + time * .2);
+            n = clamp(smoothstep(.3, .35, n) - smoothstep(.4, .45, n), 0., 1.);
+            return vec3(.7, .1, .05) * n;
+          }
+          
+          void main() {
+            //vec3 color = texture(charset, vUv).rgb * vec3(1., vUv.xy);
+            float scanlines = .8 + .2 * smoothstep(0., 4., mod(gl_FragCoord.y, 4.));
+            fragColor = vec4(background(),1.);
+          }
+        </script>
+    </shader-art>
+</body>
+</html>

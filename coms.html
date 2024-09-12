@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>UQUART - Communicator</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Handjet&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Montserrat:ital,wght@0,250;1,250&display=swap"
+        rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="notifications.js"></script>
+    <script src="https://unpkg.com/socket.io-client@4.7.5/dist/socket.io.min.js"
+    integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO" crossorigin="anonymous">
+    </script>
+    <script type="module">
+        import { ShaderArt } from 'https://cdn.skypack.dev/shader-art';
+        ShaderArt.register();
+    </script>
+</head>
+<body>
+    <shader-art autoplay dpr="1" role="img" tabindex="0" aria-label="A noise animation in red">
+        <script type="buffer" name="position" data-size="2">
+          [-1, 1, -1,-1, 1,1, 1, 1, -1,-1, 1,-1]
+        </script>
+        <script type="buffer" name="uv" data-size="2">
+          [ 0, 0,  0, 1, 1,0, 1, 0,  0, 1, 1, 1]
+        </script>
+        <script type="vert">
+          #version 300 es
+          
+          precision highp float;
+          in vec4 position;
+          in vec2 uv;
+          out vec2 vUv;
+          out vec4 vPosition;
+          void main() {
+            vUv = uv;
+            vPosition = position;
+            gl_Position = position;
+          }
+        </script>
+        <script type="frag">
+          #version 300 es
+          
+          precision highp float;
+          in vec2 vUv;
+          in vec4 vPosition;
+          out vec4 fragColor;
+          uniform vec2 resolution;
+          uniform float time;
+          uniform sampler2D charset;
+          uniform sampler2D message;
+          
+          #define AA 1e-3
+          #define PI 3.141592654
+          #define DEG PI / 180.
+      
+          vec2 rotate(vec2 p, float a) {
+            return vec2(p.x * cos(a) - p.y * sin(a),
+                    p.x * sin(a) + p.y * cos(a));
+          }
+            
+          float nooise(vec2 p) {
+            float n = .5 + .5 * (
+              sin(p.x * .5 + cos(p.y * 4. + .2 * cos(p.x * 2. + time * .5) + time * .3) + time * .4) * 
+              cos(p.y * .7 + sin(p.x * 3. + .3 * cos(p.y * 2. + time * .6) + time * .4) + time * .7)
+            );
+            return n;
+          }
+          
+          
+          vec3 background() {
+            vec2 p0 = vPosition.xy;
+            float aspectRatio = resolution.x / resolution.y;
+            p0.x *= aspectRatio;
+            vec2 p = rotate(p0.xy * .8, time * .05);
+            
+            float n = (nooise(p) + nooise(p * 2.) + nooise(p * 5.)) / 3.;
+            
+            n = n * sin(n * n * 23. + time * .2);
+            n = clamp(smoothstep(.3, .35, n) - smoothstep(.4, .45, n), 0., 1.);
+            return vec3(.7, .1, .05) * n;
+          }
+          
+          void main() {
+            //vec3 color = texture(charset, vUv).rgb * vec3(1., vUv.xy);
+            float scanlines = .8 + .2 * smoothstep(0., 4., mod(gl_FragCoord.y, 4.));
+            fragColor = vec4(background(),1.);
+          }
+        </script>
+    </shader-art>
+    <div class="UI">
+        <div class="navleft" id="navleft">
+            <h6 id="UQUARTtitle">UQUART</h6>
+            <div class="friendLIST" id="friendLIST">
+            </div>
+            <div class="form-popup" id="myForm">
+                <form class="form-container">
+                    <button onclick="generateId();" id="genBTN" class="formBTN" style="display:none">Generate
+                        ID</button>
+                    <label>Your Id</label>
+                    <button onclick="Copy('userIdInput')" class="formBTN">Copy the Public ID</button>
+                    <input id="userIdInput" type="text" placeholder="Your ID" readonly>
+                    <label>Your Private Key</label>
+                    <button onclick="Copy('privateKeyInput')" class="formBTN">Copy the Private Key</button>
+                    <input id="privateKeyInput" type="password" placeholder="Your Private Key" readonly>
+                    <label>Your Private Key 2</label>
+                    <button onclick="Copy('privateKeyInput2')" class="formBTN">Copy the Private Key 2</button>
+                    <br>
+                    <input id="privateKeyInput2" type="password" placeholder="Your Private Key 2" readonly>
+                    <button type="button" class="btn cancel" onclick="closeForm()">Close & Save</button>
+                </form>
+            </div>
+            <div class="form-popup" id="addForm">
+                <form class="form-container">
+                    <br>
+                    <label>Users ID</label>
+                    <input id="friendIdInput" type="text" placeholder="Users ID" maxlength="8" minlength="8">
+                    <input id="friendNameInput" type="text" placeholder="User Contact Name" maxlength="32">
+                    <button onclick="getFriendID(); closeaddForm();" id="addBTN" class="btn cancel">Add a
+                        Friend</button>
+                    <button type="button" class="btn cancel" onclick="closeaddForm()">Close & Save</button>
+                </form>
+            </div>
+            <div class="settingsBTNS">
+                <button class="open-button" onclick="openForm()"><img
+                        src="https://cdn.glitch.global/1006389e-fda7-4076-92d6-7bfd6ca0e4b3/settings-svgrepo-com.svg?v=1725308085034"
+                        class="settingsBTNSIMG"></button>
+                <button class="add-button" onclick="addForm()"><img
+                        src="https://cdn.glitch.global/1006389e-fda7-4076-92d6-7bfd6ca0e4b3/add-icon-svgrepo-com.svg?v=1725308083329"
+                        class="settingsBTNSIMG"></button>
+
+            </div>
+
+        </div>
+        <div class="navright" id="navright">
+            <div class="friendINchat"><img src="https://cdn.glitch.global/1006389e-fda7-4076-92d6-7bfd6ca0e4b3/icons8-user-50.png?v=1725373492864" height="35px">     <input id="targetUserIdInput" type="text" placeholder="Target User ID" maxlength="8" readonly></div>
+
+            <div class="messages" id="messages">
+
+            </div>
+            <form class="chat" onsubmit="event.preventDefault()">
+                
+                <input id="messageInput" type="text" placeholder="Type a message..." maxlength="150">
+                <button onclick="sendMessage();" type="submit" onsubmit="sendMessage();"><img
+                        src="https://cdn.glitch.global/1006389e-fda7-4076-92d6-7bfd6ca0e4b3/send-svgrepo-com%20(1).svg?v=1725308084302"
+                        width="25px"></button>
+                </form>
+        </div>
+        <div class="hideshowBTNs"><button id="hideshowBAR" onclick="hideshowBAR();"><img
+                    src="https://cdn.glitch.global/1006389e-fda7-4076-92d6-7bfd6ca0e4b3/menu.svg?v=1725460045318"
+                    width="20px" height="20px"></button></div>
+    </div>
+    <div class="scripts">
+        <script src="redirect.js"></script>
+        <script src="functions1.js"></script>
+        <script src="functions2.js"></script>
+        <script src="friends.js"></script>
+        <script src="ui.js"></script>
+    </div>
+
+</body>
+
+</html>
